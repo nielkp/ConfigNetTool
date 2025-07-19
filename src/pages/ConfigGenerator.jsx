@@ -79,13 +79,18 @@ export default function ConfigGenerator() {
           margin="normal"
         />
 
-        <TextField
-          fullWidth
-          label="CIDR (ex: /30)"
-          value={cidr}
-          onChange={(e) => setCidr(e.target.value)}
-          margin="normal"
-        />
+        <FormControl fullWidth margin="normal">
+        <InputLabel>CIDR</InputLabel>
+        <Select value={cidr} onChange={(e) => setCidr(e.target.value)} label="CIDR">
+          <MenuItem value="/30">/30</MenuItem>
+          <MenuItem value="/29">/29</MenuItem>
+          <MenuItem value="/28">/28</MenuItem>
+          <MenuItem value="/27">/27</MenuItem>
+          <MenuItem value="/26">/26</MenuItem>
+          <MenuItem value="/25">/25</MenuItem>
+          <MenuItem value="/24">/24</MenuItem>
+        </Select>
+      </FormControl>
 
         <Button variant="contained" color="primary" onClick={generateConfig} sx={{ mt: 2 }}>
           Gerar Configuração
