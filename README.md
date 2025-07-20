@@ -22,7 +22,6 @@ Este projeto é uma aplicação web que auxilia na geração automática de conf
 - React  
 - Material-UI (MUI)  
 - JavaScript/TypeScript  
-- [Outros que você estiver usando, ex: Node.js]
 
 ---
 
