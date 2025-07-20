@@ -74,4 +74,4 @@ Este projeto é uma aplicação web que auxilia na geração automática de conf
 - Módulos específicos para lógica de geração de configuração por vendor.
 
 ### Licença
-- Este projeto está licenciado sob a Licença MIT. Veja o arquivo LICENSE para detalhes.
+- Este projeto está licenciado sob a Licença MIT.
