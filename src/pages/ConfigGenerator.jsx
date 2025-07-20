@@ -1,4 +1,3 @@
-// src/pages/ConfigGenerator.jsx
 import React, { useState } from 'react';
 import {
   Box,
@@ -10,6 +9,12 @@ import {
   FormControl,
   InputLabel,
   Paper,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Divider,
+  Snackbar,
+  Alert
 } from '@mui/material';
 
 export default function ConfigGenerator() {
@@ -17,8 +22,18 @@ export default function ConfigGenerator() {
   const [ip, setIp] = useState('');
   const [cidr, setCidr] = useState('/30');
   const [generatedConfig, setGeneratedConfig] = useState('');
+  const [enableOSPF, setEnableOSPF] = useState(false);
+  const [enableMPLS, setEnableMPLS] = useState(false);
+  const [enableNAT, setEnableNAT] = useState(false);
+  const [enableDHCP, setEnableDHCP] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
 
   const generateConfig = () => {
+    if (!validateIP(ip)) {
+      alert("IP inválido.");
+      return;
+    }
+
     let config = `# Configuração para ${vendor}\n`;
     config += `IP: ${ip}${cidr}\n\n`;
 
@@ -28,7 +43,35 @@ export default function ConfigGenerator() {
       config += `interface GigabitEthernet0/0/1\nip address ${ip} ${cidrToMask(cidr)}\n`;
     }
 
+    if (enableOSPF) {
+      config += vendor === 'Mikrotik'
+        ? `routing ospf instance add name=default router-id=${ip}\n`
+        : `ospf 1\n router-id ${ip}\n quit\n`;
+    }
+
+    if (enableMPLS) {
+      config += vendor === 'Mikrotik'
+        ? `mpls ldp set enabled=yes\n`
+        : `mpls\n mpls ldp\n quit\n`;
+    }
+
+    if (enableNAT) {
+      config += vendor === 'Mikrotik'
+        ? `ip firewall nat add chain=srcnat action=masquerade out-interface=ether1\n`
+        : `nat address-group 1 192.168.1.1 192.168.1.254\n`;
+    }
+
+    if (enableDHCP) {
+      config += vendor === 'Mikrotik'
+        ? `ip dhcp-server add interface=ether1 lease-time=1d\n`
+        : `dhcp enable\n`;
+    }
+
     setGeneratedConfig(config);
+  };
+
+  const validateIP = (ip) => {
+    return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip);
   };
 
   const cidrToMask = (cidr) => {
@@ -51,9 +94,26 @@ export default function ConfigGenerator() {
       date: new Date().toLocaleString(),
       vendor,
       ip: `${ip}${cidr}`,
+      options: {
+        OSPF: enableOSPF,
+        MPLS: enableMPLS,
+        NAT: enableNAT,
+        DHCP: enableDHCP,
+      },
       config: generatedConfig,
     };
     localStorage.setItem('config-history', JSON.stringify([newItem, ...history]));
+    setAlertOpen(true);
+  };
+
+  const clearFields = () => {
+    setIp('');
+    setCidr('/30');
+    setEnableOSPF(false);
+    setEnableMPLS(false);
+    setEnableNAT(false);
+    setEnableDHCP(false);
+    setGeneratedConfig('');
   };
 
   return (
@@ -74,27 +134,52 @@ export default function ConfigGenerator() {
         <TextField
           fullWidth
           label="IP"
+          placeholder="Ex: 192.168.0.1"
           value={ip}
           onChange={(e) => setIp(e.target.value)}
           margin="normal"
         />
 
         <FormControl fullWidth margin="normal">
-        <InputLabel>CIDR</InputLabel>
-        <Select value={cidr} onChange={(e) => setCidr(e.target.value)} label="CIDR">
-          <MenuItem value="/30">/30</MenuItem>
-          <MenuItem value="/29">/29</MenuItem>
-          <MenuItem value="/28">/28</MenuItem>
-          <MenuItem value="/27">/27</MenuItem>
-          <MenuItem value="/26">/26</MenuItem>
-          <MenuItem value="/25">/25</MenuItem>
-          <MenuItem value="/24">/24</MenuItem>
-        </Select>
-      </FormControl>
+          <InputLabel>CIDR</InputLabel>
+          <Select value={cidr} onChange={(e) => setCidr(e.target.value)} label="CIDR">
+            {['/30', '/29', '/28', '/27', '/26', '/25', '/24'].map((c) => (
+              <MenuItem key={c} value={c}>{c}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-        <Button variant="contained" color="primary" onClick={generateConfig} sx={{ mt: 2 }}>
-          Gerar Configuração
-        </Button>
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle1" gutterBottom>Opções adicionais</Typography>
+
+        <FormGroup row>
+          <FormControlLabel
+            control={<Checkbox checked={enableOSPF} onChange={(e) => setEnableOSPF(e.target.checked)} />}
+            label="OSPF"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={enableMPLS} onChange={(e) => setEnableMPLS(e.target.checked)} />}
+            label="MPLS"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={enableNAT} onChange={(e) => setEnableNAT(e.target.checked)} />}
+            label="NAT"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={enableDHCP} onChange={(e) => setEnableDHCP(e.target.checked)} />}
+            label="DHCP"
+          />
+        </FormGroup>
+
+        <Box mt={2} display="flex" gap={2}>
+          <Button variant="contained" color="primary" onClick={generateConfig}>
+            Gerar Configuração
+          </Button>
+          <Button variant="outlined" onClick={clearFields}>
+            Limpar Campos
+          </Button>
+        </Box>
       </Paper>
 
       {generatedConfig && (
@@ -113,11 +198,37 @@ export default function ConfigGenerator() {
             {generatedConfig}
           </Box>
 
-          <Button variant="outlined" onClick={saveToHistory}>
-            Salvar no Histórico
-          </Button>
+          <Box display="flex" gap={2}>
+            <Button variant="outlined" onClick={saveToHistory}>
+              Salvar no Histórico
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                const blob = new Blob([generatedConfig], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `config-${vendor.toLowerCase()}-${Date.now()}.txt`;
+                link.click();
+              }}
+            >
+              Exportar como .txt
+            </Button>
+          </Box>
         </>
       )}
+
+      <Snackbar
+        open={alertOpen}
+        autoHideDuration={3000}
+        onClose={() => setAlertOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setAlertOpen(false)} severity="success" sx={{ width: '100%' }}>
+          Configuração salva no histórico!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

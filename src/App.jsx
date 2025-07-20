@@ -3,7 +3,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import ConfigGenerator from './pages/ConfigGenerator';
-// import History from './pages/History';
+import History from './pages/History'; // ✅ agora ativado
 import About from './pages/About';
 
 export default function App() {
@@ -31,7 +31,7 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<ConfigGenerator />} />
-        {/* <Route path="/history" element={<History />} /> */}
+        <Route path="/history" element={<History />} /> {/* ✅ ativado */}
         <Route path="/about" element={<About />} />
       </Routes>
     </BrowserRouter>
